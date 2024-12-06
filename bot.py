@@ -1,86 +1,46 @@
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters, ConversationHandler
+from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from telegram import Bot
+from telegram.ext import ApplicationBuilder
 
-# Konuşma adımları
-ASK_READY, GET_NAME, GET_SURNAME, GET_PHONE, ASK_TASK, GET_TASK = range(6)
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'  # SQLite veritabanı
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-# Kullanıcıya başlangıç sorusu
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    reply_keyboard = [["Evet", "Hayır"]]
-    await update.message.reply_text(
-        "Göreve hazır mısın?",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    )
-    return ASK_READY
+# Kullanıcı modelini tanımla
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    surname = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(15), nullable=False)
+    task_answer = db.Column(db.String(100), nullable=False)
 
-# Kullanıcının cevabını işleme
-async def handle_ready(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    answer = update.message.text
-    if answer == "Evet":
-        await update.message.reply_text("Harika! Biraz seni tanıyalım. Adını yazar mısın?")
-        return GET_NAME
-    else:
-        await update.message.reply_text("Cesaretini topla, tekrar gel!", reply_markup=ReplyKeyboardRemove())
-        return ConversationHandler.END
+# Telegram bot token
+BOT_TOKEN = "7973150966:AAGttJKka-imvBWOqnBn4bxqfvLBid3Smok"
+bot = Bot(BOT_TOKEN)
 
-# Adını alma
-async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["name"] = update.message.text
-    await update.message.reply_text("Soyadını yazar mısın?")
-    return GET_SURNAME
+@app.route('/')
+def home():
+    users = User.query.all()
+    return render_template('index.html', users=users)
 
-# Soyadını alma
-async def get_surname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["surname"] = update.message.text
-    await update.message.reply_text("Cep telefonu numaranı yazar mısın?")
-    return GET_PHONE
+@app.route('/edit_question', methods=['GET', 'POST'])
+def edit_question():
+    if request.method == 'POST':
+        new_question = request.form.get('new_question')
+        # Burada soruları güncelleyebilirsiniz
+        # Soruları bir veritabanında tutabiliriz, ancak bu örnekte bir değişkenle gösteriyoruz
+        global current_question
+        current_question = new_question
+        return redirect(url_for('home'))
+    return render_template('edit_question.html')
 
-# Cep telefonu numarasını alma
-async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["phone"] = update.message.text
-    await update.message.reply_text("Harika! Şimdi görev sorusuna geçiyoruz. Sadece bir cevap hakkın var:")
-    await update.message.reply_text("Görev: 5 + 3 = ?")
-    return GET_TASK
+@app.route('/user/<int:id>')
+def user_details(id):
+    user = User.query.get_or_404(id)
+    return render_template('user_details.html', user=user)
 
-# Görev cevabını alma
-async def get_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    task_answer = update.message.text
-    context.user_data["task_answer"] = task_answer
-
-    await update.message.reply_text(
-        f"Cevabın kaydedildi: {task_answer}. Görev tamamlandı!",
-        reply_markup=ReplyKeyboardRemove()
-    )
-    return ConversationHandler.END
-
-# Konuşmayı iptal etme
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text(
-        "Görev iptal edildi. Tekrar görüşmek üzere!",
-        reply_markup=ReplyKeyboardRemove()
-    )
-    return ConversationHandler.END
-
-# Botu başlat
-if __name__ == "__main__":
-    BOT_TOKEN = "7973150966:AAGttJKka-imvBWOqnBn4bxqfvLBid3Smok"
-
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-    # Konuşma işleyicisi
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            ASK_READY: [MessageHandler(filters.Regex("^(Evet|Hayır)$"), handle_ready)],
-            GET_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
-            GET_SURNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_surname)],
-            GET_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
-            GET_TASK: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_task)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
-    app.add_handler(conv_handler)
-
-    print("Bot çalışıyor...")
-    app.run_polling()
+if __name__ == '__main__':
+    db.create_all()  # Veritabanını oluştur
+    app.run(debug=True)
