@@ -1,1 +1,31 @@
 
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kullanıcılar</title>
+</head>
+<body>
+    <h1>Kullanıcılar</h1>
+    <table>
+        <tr>
+            <th>Ad</th>
+            <th>Soyad</th>
+            <th>Cep Telefonu</th>
+            <th>Görev Cevabı</th>
+            <th>Detay</th>
+        </tr>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.name }}</td>
+            <td>{{ user.surname }}</td>
+            <td>{{ user.phone }}</td>
+            <td>{{ user.task_answer }}</td>
+            <td><a href="{{ url_for('user_details', id=user.id) }}">Detay</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    <a href="{{ url_for('edit_question') }}">Soruları Düzenle</a>
+</body>
+</html>
