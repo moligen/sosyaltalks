@@ -1,3 +1,4 @@
 Flask==2.2.2
 python-telegram-bot==20.0
+Werkzeug==2.0.3  # Flask ile uyumlu sürüm
 SQLAlchemy==2.0.4
