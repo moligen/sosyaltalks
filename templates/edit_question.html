@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soru Düzenle</title>
+</head>
+<body>
+    <h1>Soru Düzenle</h1>
+    <form method="POST">
+        <label for="new_question">Yeni soru:</label>
+        <input type="text" id="new_question" name="new_question" required>
+        <button type="submit">Soru Güncelle</button>
+    </form>
+    <a href="{{ url_for('home') }}">Geri Dön</a>
+</body>
+</html>
