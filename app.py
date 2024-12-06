@@ -69,5 +69,6 @@ def run_telegram_bot():
     application.run_polling()
 
 if __name__ == '__main__':
-    db.create_all()  # Veritabanını oluştur
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    with app.app_context():
+        db.create_all()  # Tabloyu oluştur
+    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
