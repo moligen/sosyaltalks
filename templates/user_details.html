@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kullanıcı Detayları</title>
+</head>
+<body>
+    <h1>Kullanıcı Detayları</h1>
+    <p><strong>Ad:</strong> {{ user.name }}</p>
+    <p><strong>Soyad:</strong> {{ user.surname }}</p>
+    <p><strong>Cep Telefonu:</strong> {{ user.phone }}</p>
+    <p><strong>Görev Cevabı:</strong> {{ user.task_answer }}</p>
+    <a href="{{ url_for('home') }}">Geri Dön</a>
+</body>
+</html>
