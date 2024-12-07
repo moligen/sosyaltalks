@@ -1,49 +1,70 @@
-import os  # os modülünü import et
+from telegram import Update, ForceReply
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 
-from flask import Flask, render_template, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
-from telegram import Bot
-from telegram.ext import ApplicationBuilder
+# Conversation states
+NAME, SURNAME, EMAIL = range(3)
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'  # SQLite veritabanı
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+# Start command
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text(
+        "Merhaba! Kişisel bilgilerinizi toplamak için buradayım. İlk olarak, adınızı paylaşır mısınız?"
+    )
+    return NAME
 
-# Kullanıcı modelini tanımla
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    surname = db.Column(db.String(100), nullable=False)
-    phone = db.Column(db.String(15), nullable=False)
-    task_answer = db.Column(db.String(100), nullable=False)
+# Collect name
+async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['name'] = update.message.text
+    await update.message.reply_text("Teşekkürler! Şimdi soyadınızı paylaşır mısınız?")
+    return SURNAME
 
-# Telegram bot token
-BOT_TOKEN = "7973150966:AAGttJKka-imvBWOqnBn4bxqfvLBid3Smok"
-bot = Bot(BOT_TOKEN)
+# Collect surname
+async def get_surname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['surname'] = update.message.text
+    await update.message.reply_text("Son olarak, e-posta adresinizi paylaşır mısınız?")
+    return EMAIL
 
-@app.route('/')
-def home():
-    users = User.query.all()
-    return render_template('index.html', users=users)
+# Collect email
+async def get_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['email'] = update.message.text
+    
+    # Display collected information
+    name = context.user_data['name']
+    surname = context.user_data['surname']
+    email = context.user_data['email']
+    
+    await update.message.reply_text(
+        f"Teşekkürler! İşte topladığımız bilgiler:\n"
+        f"Ad: {name}\n"
+        f"Soyad: {surname}\n"
+        f"E-posta: {email}\n"
+    )
+    return ConversationHandler.END
 
-@app.route('/edit_question', methods=['GET', 'POST'])
-def edit_question():
-    if request.method == 'POST':
-        new_question = request.form.get('new_question')
-        # Burada soruları güncelleyebilirsiniz
-        # Soruları bir veritabanında tutabiliriz, ancak bu örnekte bir değişkenle gösteriyoruz
-        global current_question
-        current_question = new_question
-        return redirect(url_for('home'))
-    return render_template('edit_question.html')
+# Cancel command
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("İşlem iptal edildi. Tekrar görüşmek üzere!")
+    return ConversationHandler.END
 
-@app.route('/user/<int:id>')
-def user_details(id):
-    user = User.query.get_or_404(id)
-    return render_template('user_details.html', user=user)
+# Main function
+def main():
+    # Replace 'YOUR_BOT_TOKEN' with your bot's API token
+    application = Application.builder().token("7973150966:AAGttJKka-imvBWOqnBn4bxqfvLBid3Smok").build()
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()  # Tabloyu oluştur
-    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))  # PORT çevresel değişkenini kullan
+    # Conversation handler
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
+        states={
+            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
+            SURNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_surname)],
+            EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_email)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+
+    application.add_handler(conv_handler)
+
+    # Run the bot
+    application.run_polling()
+
+if __name__ == "__main__":
+    main()
